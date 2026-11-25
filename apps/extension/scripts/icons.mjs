@@ -58,8 +58,8 @@ function render(size) {
           const px = ((x + (sx + 0.5) / ss) / size) * 32, py = ((y + (sy + 0.5) / ss) / size) * 32;
           if (roundRect(px, py, 9) <= 0) {
             bg++;
-            const t = (px + py) / 64; // gradient #8b5cf6 → #5b3fd6
-            r += 139 + (91 - 139) * t; g += 92 + (63 - 92) * t; b += 246 + (214 - 246) * t;
+            const t = (px + py) / 64; // gradient #34c77b → #0f8a56
+            r += 52 + (15 - 52) * t; g += 199 + (138 - 199) * t; b += 123 + (86 - 123) * t;
             if (Math.min(...SEGS.map((s) => segDist(px, py, ...s))) <= stroke) fg++;
           }
         }

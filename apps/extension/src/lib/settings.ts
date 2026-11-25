@@ -1,9 +1,9 @@
 export interface ExtensionSettings {
   /** Scan pages automatically as they load. When off, only scans when the popup asks. */
   autoDetect: boolean;
-  /** Ask where to save each file (Chrome's Save As dialog). */
+  /** Ask where to save each file (the browser's Save As dialog). */
   saveAs: boolean;
-  /** Optional subfolder inside Chrome's download folder. */
+  /** Optional subfolder inside the browser's download folder. */
   subfolder: string;
   /** Detect links to documents, archives and programs, not only audio/video. */
   includeFiles: boolean;
@@ -15,6 +15,9 @@ export interface ExtensionSettings {
   webAppUrl: string;
 }
 
+/** Set at build time (see build.mjs): the deployed web app, or http://localhost:3000. */
+declare const __MEDIAGRAB_WEB_APP_URL__: string;
+
 export const DEFAULT_SETTINGS: ExtensionSettings = {
   autoDetect: true,
   saveAs: false,
@@ -22,7 +25,7 @@ export const DEFAULT_SETTINGS: ExtensionSettings = {
   includeFiles: true,
   showUnsupported: true,
   lookUpSizes: false,
-  webAppUrl: "http://localhost:3000",
+  webAppUrl: typeof __MEDIAGRAB_WEB_APP_URL__ === "string" ? __MEDIAGRAB_WEB_APP_URL__ : "http://localhost:3000",
 };
 
 export async function getSettings(): Promise<ExtensionSettings> {
@@ -36,7 +39,7 @@ export async function saveSettings(patch: Partial<ExtensionSettings>): Promise<E
   return next;
 }
 
-/** Sanitize a user-provided subfolder into a relative path Chrome accepts. */
+/** Sanitize a user-provided subfolder into a relative path browsers accept. */
 export function cleanSubfolder(input: string): string {
   return input
     .split(/[/\\]+/)

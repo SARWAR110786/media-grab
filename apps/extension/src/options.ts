@@ -60,7 +60,15 @@ async function init() {
     }
   });
 
-  $("openChromeDownloads").addEventListener("click", () => void chrome.tabs.create({ url: "chrome://settings/downloads" }));
+  const isFirefox = chrome.runtime.getURL("").startsWith("moz-extension:");
+  const openBtn = $("openChromeDownloads") as HTMLButtonElement;
+  if (isFirefox) {
+    // Firefox doesn't let extensions open about:preferences; explain where the setting is instead.
+    openBtn.hidden = true;
+    $("downloadLocationHint").textContent = "Firefox decides the base folder. Change it in Settings → General → Files and Applications.";
+  } else {
+    openBtn.addEventListener("click", () => void chrome.tabs.create({ url: "chrome://settings/downloads" }));
+  }
 }
 
 void init();

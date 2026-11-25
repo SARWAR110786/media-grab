@@ -14,6 +14,8 @@ export interface Settings {
   autoSave: boolean;
   /** Retries per segment before giving up. */
   retries: number;
+  /** Total download speed limit in KB/s across all downloads; 0 = unlimited. */
+  speedLimitKBps: number;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -23,6 +25,7 @@ export const DEFAULT_SETTINGS: Settings = {
   preferDirect: true,
   autoSave: true,
   retries: 4,
+  speedLimitKBps: 0,
 };
 
 const KEY = "mediagrab.settings.v1";
@@ -47,6 +50,7 @@ function load(): Settings {
     minSegmentMB: clamp(raw.minSegmentMB, 1, 64, DEFAULT_SETTINGS.minSegmentMB),
     maxConcurrent: clamp(raw.maxConcurrent, 1, 6, DEFAULT_SETTINGS.maxConcurrent),
     retries: clamp(raw.retries, 0, 10, DEFAULT_SETTINGS.retries),
+    speedLimitKBps: clamp(raw.speedLimitKBps, 0, 10_000_000, DEFAULT_SETTINGS.speedLimitKBps),
     preferDirect: typeof raw.preferDirect === "boolean" ? raw.preferDirect : DEFAULT_SETTINGS.preferDirect,
     autoSave: typeof raw.autoSave === "boolean" ? raw.autoSave : DEFAULT_SETTINGS.autoSave,
   };

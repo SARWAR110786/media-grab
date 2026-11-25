@@ -5,6 +5,9 @@ import { toast } from "sonner";
 import {
   ArrowRight,
   Ban,
+  CalendarClock,
+  ChevronDown,
+  Hash,
   ClipboardPaste,
   Download,
   ExternalLink,
@@ -17,9 +20,8 @@ import {
   Search,
   ShieldCheck,
   TriangleExclamationPoint,
-  Zap,
 } from "lucide-react";
-import { formatBytes, planSegments, type AnalyzeError, type AnalyzeFile, type AnalyzeResponse, type AnalyzeWebpage } from "@mediagrab/shared";
+import { formatBytes, HASH_LABEL, parseChecksum, planSegments, type AnalyzeError, type AnalyzeFile, type AnalyzeResponse, type AnalyzeWebpage } from "@mediagrab/shared";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
@@ -104,7 +106,16 @@ export function UrlAnalyzer({ initialUrl, autoAnalyze = false, compact = false }
             ref={inputRef}
             value={value}
             onChange={(e) => setValue(e.target.value)}
-            placeholder="https://example.com/video.mp4"
+            onPaste={(e) => {
+              // Pasting a link is the whole job: check it right away.
+              const text = e.clipboardData.getData("text").trim();
+              if (!text) return;
+              e.preventDefault();
+              setValue(text);
+              void run(text);
+            }}
+            autoFocus={!initialUrl}
+            placeholder="Paste a link, e.g. https://example.com/video.mp4"
             aria-label="File URL"
             inputMode="url"
             autoComplete="off"
@@ -153,14 +164,33 @@ function FileResult({ info }: { info: AnalyzeFile }) {
   const [filename, setFilename] = useState(info.filename);
   const [connections, setConnections] = useState(info.segmentable ? settings.connections : 1);
   const [added, setAdded] = useState<string | null>(null);
+  const [showOptions, setShowOptions] = useState(false);
+  const [checksum, setChecksum] = useState("");
+  const [startAt, setStartAt] = useState("");
+  const parsedSum = checksum.trim() ? parseChecksum(checksum) : null;
+  const startMs = startAt ? new Date(startAt).getTime() : NaN;
+  const scheduled = Number.isFinite(startMs) && startMs > Date.now();
   const canAccelerate = !info.exceedsLimit || info.corsDirect;
   // The exact plan the engine will use, so the UI never promises more connections than it opens.
   const segments = planSegments(info.size, info.acceptRanges, connections, settings.minSegmentMB * 1024 * 1024).length;
 
   const start = () => {
-    const id = downloadManager.add(info, { filename, connections });
+    if (parsedSum && !parsedSum.ok) {
+      toast.error(parsedSum.error);
+      setShowOptions(true);
+      return;
+    }
+    if (startAt && !scheduled) {
+      toast.error("The start time is in the past. Pick a later time or clear it.");
+      setShowOptions(true);
+      return;
+    }
+    const id = downloadManager.add(info, { filename, connections, checksum: checksum.trim() || undefined, startAt: scheduled ? startMs : undefined });
     setAdded(id);
-    toast.success("Download started", { description: filename, action: { label: "View", onClick: () => (window.location.href = "/downloads") } });
+    toast.success(scheduled ? "Download scheduled" : "Download started", {
+      description: scheduled ? `${filename} · starts ${new Date(startMs).toLocaleString()}` : filename,
+      action: { label: "View", onClick: () => (window.location.href = "/downloads") },
+    });
   };
 
   const browserHref = info.exceedsLimit ? info.finalUrl : browserDownloadHref(info.finalUrl, filename);
@@ -178,22 +208,13 @@ function FileResult({ info }: { info: AnalyzeFile }) {
             <div className="mt-3 flex flex-wrap gap-2">
               <Badge>{info.formatLabel}</Badge>
               <Badge variant="secondary">{formatBytes(info.size)}</Badge>
-              <Badge variant="outline" title={info.mimeType}>
-                {info.mimeType}
-              </Badge>
               {info.acceptRanges ? (
                 <Badge variant="success">
-                  <ShieldCheck /> Resumable
+                  <ShieldCheck /> Can pause &amp; resume
                 </Badge>
               ) : (
-                <Badge variant="warning">No range support</Badge>
+                <Badge variant="warning">Can&apos;t resume</Badge>
               )}
-              {info.segmentable && (
-                <Badge variant="default">
-                  <Zap /> Multi-connection
-                </Badge>
-              )}
-              {info.redirected && <Badge variant="outline">Redirected</Badge>}
             </div>
           </div>
         </div>
@@ -209,20 +230,75 @@ function FileResult({ info }: { info: AnalyzeFile }) {
           </ul>
         )}
 
-        {info.segmentable && canAccelerate && (
-          <div className="rounded-lg border p-4">
-            <div className="mb-3 flex items-center justify-between text-sm">
-              <span className="flex items-center gap-2 font-medium">
-                <Gauge className="size-4 text-primary" /> Connections
+        {canAccelerate && !added && (
+          <div className="rounded-lg border">
+            <button
+              type="button"
+              onClick={() => setShowOptions((v) => !v)}
+              aria-expanded={showOptions}
+              className="flex w-full cursor-pointer items-center justify-between gap-2 px-4 py-3 text-sm font-medium"
+            >
+              <span>
+                More options
+                {((info.segmentable && connections !== settings.connections) || checksum.trim() || scheduled) && (
+                  <span className="ml-2 font-normal text-muted-foreground">
+                    {[connections !== settings.connections && info.segmentable && `${connections} connections`, checksum.trim() && "checksum", scheduled && "scheduled"].filter(Boolean).join(" · ")}
+                  </span>
+                )}
               </span>
-              <span className="tabular-nums text-muted-foreground">
-                {connections === 1 ? "1 (no splitting)" : segments < connections ? `${segments} segment${segments === 1 ? "" : "s"} (file size limits splitting)` : `${segments} parallel segments`}
-              </span>
-            </div>
-            <Slider min={1} max={16} step={1} value={[connections]} onValueChange={([v]) => setConnections(v)} aria-label="Connections" />
-            <p className="mt-3 text-xs text-muted-foreground">
-              More connections can help when a server limits speed per connection. Actual speed depends on the server, your internet connection and the browser.
-            </p>
+              <ChevronDown className={cn("size-4 transition-transform", showOptions && "rotate-180")} />
+            </button>
+            {showOptions && (
+              <div className="grid gap-4 border-t p-4 sm:grid-cols-2">
+                {info.segmentable && (
+                  <div className="sm:col-span-2">
+                    <div className="mb-3 flex items-center justify-between text-sm">
+                      <span className="flex items-center gap-2 font-medium">
+                        <Gauge className="size-4 text-primary" /> Connections
+                      </span>
+                      <span className="tabular-nums text-muted-foreground">
+                        {connections === 1 ? "1 (no splitting)" : segments < connections ? `${segments} segment${segments === 1 ? "" : "s"} (file size limits splitting)` : `${segments} parallel segments`}
+                      </span>
+                    </div>
+                    <Slider min={1} max={16} step={1} value={[connections]} onValueChange={([v]) => setConnections(v)} aria-label="Connections" />
+                    <p className="mt-3 text-xs text-muted-foreground">
+                      More connections can help when a server limits speed per connection. Actual speed depends on the server and your internet connection.
+                    </p>
+                  </div>
+                )}
+
+                <div>
+                  <label htmlFor="mg-checksum" className="flex items-center gap-1.5 text-sm font-medium">
+                    <Hash className="size-4 text-primary" /> Expected checksum
+                  </label>
+                  <Input
+                    id="mg-checksum"
+                    value={checksum}
+                    onChange={(e) => setChecksum(e.target.value)}
+                    placeholder="SHA-256, SHA-1 or MD5"
+                    spellCheck={false}
+                    autoComplete="off"
+                    className="mt-1.5 font-mono text-xs"
+                  />
+                  <p className={cn("mt-1.5 text-xs", parsedSum && !parsedSum.ok ? "text-destructive" : "text-muted-foreground")}>
+                    {parsedSum ? (parsedSum.ok ? `${HASH_LABEL[parsedSum.algorithm]} — checked when the download finishes.` : parsedSum.error) : "Paste the hash the publisher lists to confirm the file arrived intact."}
+                  </p>
+                </div>
+                <div>
+                  <label htmlFor="mg-start-at" className="flex items-center gap-1.5 text-sm font-medium">
+                    <CalendarClock className="size-4 text-primary" /> Start at
+                  </label>
+                  <Input id="mg-start-at" type="datetime-local" value={startAt} onChange={(e) => setStartAt(e.target.value)} className="mt-1.5" />
+                  <p className="mt-1.5 text-xs text-muted-foreground">
+                    {startAt && !scheduled ? (
+                      <span className="text-destructive">That time has already passed.</span>
+                    ) : (
+                      "Leave empty to start now. Keep this tab open: scheduled downloads run in the browser."
+                    )}
+                  </p>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
@@ -231,25 +307,29 @@ function FileResult({ info }: { info: AnalyzeFile }) {
             added ? (
               <Button asChild size="lg" variant="secondary" className="sm:flex-1">
                 <Link href="/downloads">
-                  View in download manager <ArrowRight />
+                  See progress <ArrowRight />
                 </Link>
               </Button>
             ) : (
               <Button size="lg" onClick={start} className="sm:flex-1">
-                <Zap /> {segments > 1 ? "Accelerated download" : "Download"}
+                {scheduled ? <CalendarClock /> : <Download />} {scheduled ? "Schedule download" : "Download"}
               </Button>
             )
           ) : null}
-          <Button asChild size="lg" variant="outline" className="sm:flex-1">
+          <Button asChild size="lg" variant="outline" className="sm:flex-none">
             <a href={browserHref} download={filename} rel="noopener noreferrer" target={info.exceedsLimit ? "_blank" : undefined}>
               <Download /> Download with browser
             </a>
           </Button>
         </div>
         <p className="text-xs text-muted-foreground">
-          <strong className="font-medium text-foreground">Download</strong> uses MediaGrab&apos;s manager (progress, pause/resume, retry).{" "}
-          <strong className="font-medium text-foreground">Download with browser</strong> hands the file to your browser&apos;s built-in downloader
-          {info.exceedsLimit ? " directly from the original server." : " and saves it to your browser's download folder."}
+          {canAccelerate ? (
+            <>
+              <strong className="font-medium text-foreground">Download</strong> shows progress and lets you pause and resume.{" "}
+            </>
+          ) : null}
+          <strong className="font-medium text-foreground">Download with browser</strong> uses your browser&apos;s own downloader
+          {info.exceedsLimit ? ", straight from the original server." : "."}
         </p>
       </div>
     </Card>
@@ -260,7 +340,7 @@ function WebpageResult({ info, onAnalyze }: { info: AnalyzeWebpage; onAnalyze: (
   return (
     <Card className="p-5 sm:p-6">
       <div className="flex items-start gap-4">
-        <span className="flex size-12 shrink-0 items-center justify-center rounded-lg bg-sky-500/12 text-sky-600 dark:text-sky-300">
+        <span className="flex size-12 shrink-0 items-center justify-center rounded-lg bg-accent text-accent-foreground">
           <Globe className="size-6" />
         </span>
         <div className="min-w-0">

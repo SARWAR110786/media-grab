@@ -39,7 +39,7 @@ export function aggregate(tab: TabMedia | null): { items: DetectedMedia[]; notes
 async function updateBadge(tabId: number, tab: TabMedia | null): Promise<void> {
   const count = aggregate(tab).items.filter((i) => i.supported).length;
   try {
-    await chrome.action.setBadgeBackgroundColor({ tabId, color: "#6d4aff" });
+    await chrome.action.setBadgeBackgroundColor({ tabId, color: "#16a05a" });
     await chrome.action.setBadgeText({ tabId, text: count ? String(count > 99 ? "99+" : count) : "" });
   } catch {
     /* tab closed */
@@ -160,7 +160,7 @@ async function startDownloads(items: Array<{ url: string; filename: string }>, p
         saveAs: settings.saveAs,
         conflictAction: "uniquify",
       });
-      if (typeof id !== "number") throw new Error(chrome.runtime.lastError?.message ?? "Chrome refused the download.");
+      if (typeof id !== "number") throw new Error(chrome.runtime.lastError?.message ?? "The browser refused the download.");
       await addHistory({ id, url: item.url, filename: name, pageTitle, startedAt: Date.now() });
       results.push({ url: item.url, ok: true, downloadId: id });
     } catch (e) {
@@ -172,14 +172,25 @@ async function startDownloads(items: Array<{ url: string; filename: string }>, p
 
 // ---------- Wiring ----------
 
+/**
+ * True for the extension's own pages (popup, options), even when one is opened in a tab.
+ * A content script's sender.url is the web page it runs in, so it can never match the extension origin.
+ */
+function fromExtensionPage(sender: chrome.runtime.MessageSender): boolean {
+  // getURL("") is chrome-extension://<id>/ in Chrome and moz-extension://<uuid>/ in Firefox.
+  return sender.id === chrome.runtime.id && typeof sender.url === "string" && sender.url.startsWith(chrome.runtime.getURL(""));
+}
+
 chrome.runtime.onMessage.addListener((msg: Message, sender, sendResponse) => {
+  if (msg?.type === "media:update") {
+    const tabId = sender.tab?.id;
+    if (tabId == null || tabId < 0) return false;
+    void handleReport(tabId, sender.frameId ?? 0, msg.report);
+    return false;
+  }
+  // Everything else reads other tabs' state or starts downloads: only the popup/options pages may ask.
+  if (!fromExtensionPage(sender)) return false;
   switch (msg?.type) {
-    case "media:update": {
-      const tabId = sender.tab?.id;
-      if (tabId == null || tabId < 0) return false;
-      void handleReport(tabId, sender.frameId ?? 0, msg.report);
-      return false;
-    }
     case "media:get": {
       void getTab(msg.tabId).then((tab) => sendResponse({ ...aggregate(tab), title: tab?.title ?? "", pageUrl: tab?.pageUrl ?? "" }));
       return true;

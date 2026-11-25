@@ -10,7 +10,16 @@ import { fileURLToPath } from "node:url";
 import { startFixtureServer, sha256 } from "./fixture-server.mjs";
 
 const require = createRequire(import.meta.url);
-const { chromium } = require("playwright");
+let chromium;
+try {
+  ({ chromium } = require("playwright"));
+} catch {
+  console.error(
+    "Playwright is not installed. It is kept out of package.json so normal installs stay light.\n" +
+      "Install it once with:\n  npm install --no-save playwright && npx playwright install chromium",
+  );
+  process.exit(1);
+}
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const WEB_PORT = Number(process.env.E2E_WEB_PORT ?? 3100);
@@ -109,7 +118,7 @@ async function managedDownload(page, url) {
 
 /** In-app (client-side) navigation, so running downloads keep going. */
 async function gotoManager(page) {
-  await page.getByRole("link", { name: /Download History/ }).first().click();
+  await page.getByRole("link", { name: /My downloads/ }).first().click();
   await page.waitForURL("**/downloads");
 }
 
@@ -119,15 +128,22 @@ async function storedRecords(page) {
 
 console.log("Web app");
 
-await test("landing page renders hero and both CTAs", async () => {
+await test("home page is the downloader: paste box, steps, extension card, light theme", async () => {
   const { context, page } = await webPage();
   await page.goto(WEB);
-  await page.getByRole("heading", { name: /Download Smarter/ }).waitFor();
-  assert(await page.getByRole("link", { name: "Start Downloading" }).isVisible(), "Start Downloading");
-  assert(await page.getByRole("link", { name: "Get Chrome Extension" }).isVisible(), "Get Chrome Extension");
-  await shot(page, "landing");
-  await page.getByRole("link", { name: "Start Downloading" }).click();
-  await page.waitForURL("**/dashboard");
+  await page.getByRole("heading", { name: /Paste a link\. Get the file\./ }).waitFor();
+  assert(await page.getByLabel("File URL").isVisible(), "paste box on the home page");
+  assert(await page.getByRole("heading", { name: "Copy the link" }).isVisible(), "how-it-works steps");
+  assert(await page.getByRole("link", { name: "Get the extension" }).isVisible(), "extension card");
+  const dark = await page.evaluate(() => document.documentElement.classList.contains("dark") || getComputedStyle(document.documentElement).colorScheme.includes("dark"));
+  assert(!dark, "light theme only");
+  await shot(page, "home");
+  // Old addresses still work.
+  await page.goto(`${WEB}/dashboard`);
+  await page.waitForURL(WEB + "/");
+  await page.goto(`${WEB}/downloader?url=${encodeURIComponent(`${F}/files/tone.wav`)}`);
+  await page.waitForURL(/\/\?url=/);
+  await page.getByRole("button", { name: /^Download$/ }).waitFor({ timeout: 15000 });
   await context.close();
 });
 
@@ -139,7 +155,7 @@ for (const [name, mode] of [
 ]) {
   await test(`downloads ${name} and the bytes match (${mode})`, async () => {
     const { context, page } = await webPage({ minSegmentMB: 1 });
-    await page.goto(`${WEB}/downloader`);
+    await page.goto(`${WEB}/`);
     const before = fixture.requests.length;
     const { data, name: saved } = await managedDownload(page, `${F}/files/${name}`);
     assert(saved === name, `filename ${saved}`);
@@ -157,7 +173,7 @@ for (const [name, mode] of [
 
 await test("segmented download integrity across 8 connections", async () => {
   const { context, page } = await webPage({ connections: 8, minSegmentMB: 1 });
-  await page.goto(`${WEB}/downloader`);
+  await page.goto(`${WEB}/`);
   const before = fixture.requests.length;
   const { data } = await managedDownload(page, `${F}/files/sample.mp4`);
   assert(sha256(data) === sha256(fixture.files["sample.mp4"].data), "sha256");
@@ -170,7 +186,7 @@ await test("segmented download integrity across 8 connections", async () => {
 
 await test("direct (CORS) transport downloads straight from the origin", async () => {
   const { context, page } = await webPage();
-  await page.goto(`${WEB}/downloader`);
+  await page.goto(`${WEB}/`);
   const { data } = await managedDownload(page, `${F}/cors/sample.mp4`);
   assert(sha256(data) === sha256(fixture.files["sample.mp4"].data), "sha256");
   const recs = await storedRecords(page);
@@ -180,9 +196,9 @@ await test("direct (CORS) transport downloads straight from the origin", async (
 
 await test("server without Range support falls back to a single stream", async () => {
   const { context, page } = await webPage();
-  await page.goto(`${WEB}/downloader`);
+  await page.goto(`${WEB}/`);
   await analyzeIn(page, `${F}/norange/big.bin`);
-  await page.getByText("No range support").waitFor();
+  await page.getByText("Can't resume").waitFor();
   const [download] = await Promise.all([page.waitForEvent("download"), page.getByRole("button", { name: /^Download$/ }).click()]);
   const file = await download.path();
   assert(sha256(fs.readFileSync(file)) === sha256(fixture.files["big.bin"].data), "sha256");
@@ -193,9 +209,9 @@ await test("server without Range support falls back to a single stream", async (
 
 await test("pause keeps progress and resume completes with correct bytes", async () => {
   const { context, page } = await webPage({ connections: 4, autoSave: true });
-  await page.goto(`${WEB}/downloader`);
+  await page.goto(`${WEB}/`);
   await analyzeIn(page, `${F}/slow/sample.mp4`);
-  await page.getByRole("button", { name: /Accelerated download/ }).click();
+  await page.getByRole("button", { name: /^Download$/ }).click();
   await gotoManager(page);
   const item = page.getByTestId("download-item").first();
   await waitFor(async () => (await storedRecords(page))[0]?.downloaded > 1_000_000, { message: "progress > 1MB", timeout: 30000 });
@@ -218,9 +234,9 @@ await test("pause keeps progress and resume completes with correct bytes", async
 
 await test("resume after a page reload continues from stored segments", async () => {
   const { context, page } = await webPage({ connections: 4 });
-  await page.goto(`${WEB}/downloader`);
+  await page.goto(`${WEB}/`);
   await analyzeIn(page, `${F}/slow/sample.mp4`);
-  await page.getByRole("button", { name: /Accelerated download/ }).click();
+  await page.getByRole("button", { name: /^Download$/ }).click();
   await waitFor(async () => (await storedRecords(page))[0]?.downloaded > 1_500_000, { message: "progress", timeout: 30000 });
   page.on("dialog", (d) => d.accept());
   await page.goto(`${WEB}/downloads`); // client-side state is rebuilt from storage on a full load
@@ -236,9 +252,9 @@ await test("resume after a page reload continues from stored segments", async ()
 
 await test("cancel stops the download and marks it cancelled", async () => {
   const { context, page } = await webPage();
-  await page.goto(`${WEB}/downloader`);
+  await page.goto(`${WEB}/`);
   await analyzeIn(page, `${F}/slow/sample.mp4`);
-  await page.getByRole("button", { name: /Accelerated download/ }).click();
+  await page.getByRole("button", { name: /^Download$/ }).click();
   await gotoManager(page);
   const item = page.getByTestId("download-item").first();
   await waitFor(async () => (await item.getAttribute("data-status")) === "downloading", { message: "downloading" });
@@ -251,7 +267,7 @@ await test("cancel stops the download and marks it cancelled", async () => {
 
 await test("failed download shows the error and can be retried / removed", async () => {
   const { context, page } = await webPage({ retries: 1 });
-  await page.goto(`${WEB}/downloader`);
+  await page.goto(`${WEB}/`);
   await analyzeIn(page, `${F}/truncate/big.bin`);
   await page.getByRole("button", { name: /^Download$/ }).click();
   await gotoManager(page);
@@ -270,7 +286,7 @@ await test("failed download shows the error and can be retried / removed", async
 
 await test("invalid URLs are rejected with a clear message", async () => {
   const { context, page } = await webPage();
-  await page.goto(`${WEB}/downloader`);
+  await page.goto(`${WEB}/`);
   for (const bad of ["hello", "ftp://example.com/file.zip", "javascript:alert(1)"]) {
     await analyzeIn(page, bad);
     await page.getByRole("alert").getByText("Invalid URL").waitFor();
@@ -280,7 +296,7 @@ await test("invalid URLs are rejected with a clear message", async () => {
 
 await test("unsupported websites and streams are explained, not attempted", async () => {
   const { context, page } = await webPage();
-  await page.goto(`${WEB}/downloader`);
+  await page.goto(`${WEB}/`);
   await analyzeIn(page, "https://www.youtube.com/watch?v=dQw4w9WgXcQ");
   await page.getByText("Website not supported").waitFor();
   await analyzeIn(page, `${F}/live/master.m3u8`);
@@ -294,7 +310,7 @@ await test("unsupported websites and streams are explained, not attempted", asyn
 
 await test("webpage URLs list direct links found in the HTML", async () => {
   const { context, page } = await webPage();
-  await page.goto(`${WEB}/downloader`);
+  await page.goto(`${WEB}/`);
   await analyzeIn(page, `${F}/page.html`);
   await page.getByText(/This is a webpage, not a direct file/).waitFor();
   await page.getByText("sample.mp4").waitFor();
@@ -305,17 +321,82 @@ await test("webpage URLs list direct links found in the HTML", async () => {
   await context.close();
 });
 
-await test("dashboard shows queue and history; settings persist", async () => {
+await test("home lists recent downloads; settings persist", async () => {
   const { context, page } = await webPage();
-  await page.goto(`${WEB}/dashboard`);
+  await page.goto(`${WEB}/`);
   await managedDownload(page, `${F}/files/tone.wav`);
-  await page.getByRole("heading", { name: "Recent downloads" }).waitFor();
+  await page.getByRole("heading", { name: "Your downloads" }).waitFor();
   await waitFor(() => page.getByTestId("download-item").filter({ hasText: "tone.wav" }).isVisible(), { message: "recent item" });
-  await shot(page, "dashboard");
+  await shot(page, "home-with-downloads");
   await page.goto(`${WEB}/settings`);
   await page.getByRole("switch", { name: "Save automatically" }).click();
   await page.reload();
   assert((await page.getByRole("switch", { name: "Save automatically" }).getAttribute("data-state")) === "unchecked", "setting persisted");
+  await context.close();
+});
+
+await test("checksum: a correct SHA-256 is verified, a wrong one is flagged", async () => {
+  const { context, page } = await webPage({ autoSave: false });
+  await page.goto(`${WEB}/`);
+  const good = sha256(fixture.files["document.pdf"].data);
+  await analyzeIn(page, `${F}/files/document.pdf`);
+  await page.getByRole("button", { name: /More options/ }).click();
+  await page.getByLabel("Expected checksum").fill(`${good}  document.pdf`);
+  await page.getByRole("button", { name: /^(Accelerated download|Download)$/ }).click();
+  await gotoManager(page);
+  const item = page.getByTestId("download-item").filter({ hasText: "document.pdf" }).first();
+  await waitFor(async () => (await item.getByTestId("checksum").getAttribute("data-state")) === "match", { message: "checksum match", timeout: 30000 });
+
+  // Re-verify the finished file against a wrong hash.
+  await item.getByRole("button", { name: /Re-verify/ }).click();
+  await item.getByLabel("Expected checksum").fill("0".repeat(64));
+  await item.getByRole("button", { name: /^Verify$/ }).click();
+  await waitFor(async () => (await item.getByTestId("checksum").getAttribute("data-state")) === "mismatch", { message: "checksum mismatch" });
+  assert((await item.innerText()).includes(good), "shows the actual hash");
+  await context.close();
+});
+
+await test("scheduled downloads wait, then can be started early", async () => {
+  const { context, page } = await webPage({ autoSave: false });
+  await page.goto(`${WEB}/`);
+  await analyzeIn(page, `${F}/files/song.mp3`);
+  await page.getByRole("button", { name: /More options/ }).click();
+  const later = new Date(Date.now() + 3 * 3600_000);
+  const pad = (n) => String(n).padStart(2, "0");
+  const local = `${later.getFullYear()}-${pad(later.getMonth() + 1)}-${pad(later.getDate())}T${pad(later.getHours())}:${pad(later.getMinutes())}`;
+  await page.getByLabel("Start at").fill(local);
+  await page.getByRole("button", { name: "Schedule download" }).click();
+  await gotoManager(page);
+  const item = page.getByTestId("download-item").filter({ hasText: "song.mp3" }).first();
+  await item.getByText("Scheduled", { exact: true }).waitFor();
+  await new Promise((r) => setTimeout(r, 1500));
+  assert((await item.getAttribute("data-status")) === "queued", "still waiting");
+  await item.getByRole("button", { name: "Start now" }).click();
+  await waitFor(async () => (await item.getAttribute("data-status")) === "completed", { message: "completed after Start now", timeout: 30000 });
+  await context.close();
+});
+
+await test("speed limit slows downloads to the configured rate", async () => {
+  // 512 KB/s on a ~6 MB file should take well over 5 seconds.
+  const { context, page } = await webPage({ speedLimitKBps: 512, autoSave: false });
+  await page.goto(`${WEB}/`);
+  await analyzeIn(page, `${F}/files/sample.mp4`);
+  const t0 = Date.now();
+  await page.getByRole("button", { name: /^(Accelerated download|Download)$/ }).click();
+  await gotoManager(page);
+  const item = page.getByTestId("download-item").filter({ hasText: "sample.mp4" }).first();
+  await new Promise((r) => setTimeout(r, 3000));
+  assert((await item.getAttribute("data-status")) === "downloading", "still downloading after 3 s");
+  // Lift the limit and let it finish.
+  await page.evaluate(() => {
+    const s = JSON.parse(localStorage.getItem("mediagrab.settings.v1") ?? "{}");
+    localStorage.setItem("mediagrab.settings.v1", JSON.stringify({ ...s, speedLimitKBps: 0 }));
+  });
+  await page.getByRole("link", { name: /Settings/ }).first().click();
+  await page.getByRole("button", { name: /Reset to defaults/ }).click();
+  await gotoManager(page);
+  await waitFor(async () => (await item.getAttribute("data-status")) === "completed", { message: "completed after lifting limit", timeout: 60000 });
+  assert(Date.now() - t0 > 3000, "was throttled");
   await context.close();
 });
 

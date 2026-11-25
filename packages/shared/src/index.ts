@@ -5,3 +5,5 @@ export * from "./ip";
 export * from "./format";
 export * from "./engine";
 export * from "./types";
+export * from "./hash";
+export * from "./throttle";
