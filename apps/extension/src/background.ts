@@ -172,10 +172,13 @@ async function startDownloads(items: Array<{ url: string; filename: string }>, p
 
 // ---------- Wiring ----------
 
-/** True for the extension's own pages (popup, options). Content scripts run inside web pages and have `sender.tab`. */
+/**
+ * True for the extension's own pages (popup, options), even when one is opened in a tab.
+ * A content script's sender.url is the web page it runs in, so it can never match the extension origin.
+ */
 function fromExtensionPage(sender: chrome.runtime.MessageSender): boolean {
   // getURL("") is chrome-extension://<id>/ in Chrome and moz-extension://<uuid>/ in Firefox.
-  return sender.id === chrome.runtime.id && !sender.tab && typeof sender.url === "string" && sender.url.startsWith(chrome.runtime.getURL(""));
+  return sender.id === chrome.runtime.id && typeof sender.url === "string" && sender.url.startsWith(chrome.runtime.getURL(""));
 }
 
 chrome.runtime.onMessage.addListener((msg: Message, sender, sendResponse) => {
