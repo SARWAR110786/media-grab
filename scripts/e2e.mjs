@@ -10,7 +10,16 @@ import { fileURLToPath } from "node:url";
 import { startFixtureServer, sha256 } from "./fixture-server.mjs";
 
 const require = createRequire(import.meta.url);
-const { chromium } = require("playwright");
+let chromium;
+try {
+  ({ chromium } = require("playwright"));
+} catch {
+  console.error(
+    "Playwright is not installed. It is kept out of package.json so normal installs stay light.\n" +
+      "Install it once with:\n  npm install --no-save playwright && npx playwright install chromium",
+  );
+  process.exit(1);
+}
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const WEB_PORT = Number(process.env.E2E_WEB_PORT ?? 3100);

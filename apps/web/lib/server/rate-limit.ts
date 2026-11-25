@@ -32,7 +32,22 @@ export function acquireSlot(key: string, max: number): (() => void) | null {
   };
 }
 
-export function clientKey(headers: Headers): string {
-  const fwd = headers.get("x-forwarded-for")?.split(",")[0]?.trim();
-  return fwd || headers.get("x-real-ip") || "local";
+/**
+ * Client address for rate limiting.
+ * The left end of X-Forwarded-For is whatever the client sent, so it can't be trusted. Each proxy appends
+ * the address it received the request from, so with N trusted proxies in front of the app the real client
+ * is the Nth entry from the right (MEDIAGRAB_TRUSTED_PROXY_HOPS, default 1).
+ */
+export function clientKey(headers: Headers, hops = trustedProxyHops()): string {
+  const chain = (headers.get("x-forwarded-for") ?? "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+  if (chain.length) return chain[Math.max(0, chain.length - hops)];
+  return headers.get("x-real-ip")?.trim() || "local";
+}
+
+function trustedProxyHops(): number {
+  const n = Number(process.env.MEDIAGRAB_TRUSTED_PROXY_HOPS);
+  return Number.isInteger(n) && n > 0 ? n : 1;
 }

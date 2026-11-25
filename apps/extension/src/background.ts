@@ -172,14 +172,21 @@ async function startDownloads(items: Array<{ url: string; filename: string }>, p
 
 // ---------- Wiring ----------
 
+/** True for the extension's own pages (popup, options). Content scripts run inside web pages and have `sender.tab`. */
+function fromExtensionPage(sender: chrome.runtime.MessageSender): boolean {
+  return sender.id === chrome.runtime.id && !sender.tab && typeof sender.url === "string" && sender.url.startsWith(`chrome-extension://${chrome.runtime.id}/`);
+}
+
 chrome.runtime.onMessage.addListener((msg: Message, sender, sendResponse) => {
+  if (msg?.type === "media:update") {
+    const tabId = sender.tab?.id;
+    if (tabId == null || tabId < 0) return false;
+    void handleReport(tabId, sender.frameId ?? 0, msg.report);
+    return false;
+  }
+  // Everything else reads other tabs' state or starts downloads: only the popup/options pages may ask.
+  if (!fromExtensionPage(sender)) return false;
   switch (msg?.type) {
-    case "media:update": {
-      const tabId = sender.tab?.id;
-      if (tabId == null || tabId < 0) return false;
-      void handleReport(tabId, sender.frameId ?? 0, msg.report);
-      return false;
-    }
     case "media:get": {
       void getTab(msg.tabId).then((tab) => sendResponse({ ...aggregate(tab), title: tab?.title ?? "", pageUrl: tab?.pageUrl ?? "" }));
       return true;

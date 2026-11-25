@@ -86,6 +86,12 @@ npm test
 
 Unit + integration tests (Vitest, 96 tests): segment planning, parallel download reassembly (SHA-256 verified), servers without Range, servers that lie about Range, mid-stream failures with resume-from-offset retries, truncation detection, pause/resume, persisted-plan resume, transport fallback, size limits; SSRF guard (25 blocked URL forms, DNS-rebinding, multi-record DNS, redirect validation), analyzer for MP4/MP3/PDF/ZIP/WebM, webpages, errors and protected sites; download proxy Range passthrough and header safety.
 
+Playwright isn't a project dependency (it's large and only needed here). Install it once before running end-to-end tests:
+
+```bash
+npm install --no-save playwright && npx playwright install chromium
+```
+
 ```bash
 npm run build && npm run test:e2e
 ```
@@ -137,3 +143,11 @@ media-grab/
 
 - Resumable storage uses the Origin Private File System with `createWritable` (Chrome/Edge 86+, Firefox 111+). Elsewhere downloads are held in memory and can't resume after a reload.
 - Finished files are handed to the browser via a Blob URL; they remain in browser storage for **Save again** until removed from history or cleared in Settings.
+
+## Continuous integration
+
+`.github/workflows/ci.yml` runs on every push to `main` and every pull request: type-check, unit tests, production build, then the Playwright end-to-end suite. The built extension zip is uploaded as a workflow artifact.
+
+## License
+
+[MIT](LICENSE)
