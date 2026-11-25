@@ -34,11 +34,23 @@ function el<K extends keyof HTMLElementTagNameMap>(tag: K, cls?: string, text?: 
   return e;
 }
 
+/** Parse one of the built-in SVG icons into a node (no innerHTML, so nothing is ever parsed as HTML). */
+const svgCache = new Map<string, Element>();
+function svgNode(markup: string): Node {
+  let node = svgCache.get(markup);
+  if (!node) {
+    const xml = markup.includes("xmlns=") ? markup : markup.replace("<svg", '<svg xmlns="http://www.w3.org/2000/svg"');
+    node = new DOMParser().parseFromString(xml, "image/svg+xml").documentElement;
+    svgCache.set(markup, node);
+  }
+  return node.cloneNode(true);
+}
+
 function iconBtn(svg: string, title: string, onClick: () => void): HTMLButtonElement {
   const b = el("button", "icon-btn");
   b.title = title;
   b.setAttribute("aria-label", title);
-  b.innerHTML = svg; // static, trusted markup only
+  b.append(svgNode(svg));
   b.addEventListener("click", onClick);
   return b;
 }
@@ -142,7 +154,7 @@ function renderMedia(): void {
   notesBox.className = notes.length ? "notes" : "";
   for (const n of notes) {
     const d = el("div", "note");
-    d.innerHTML = ICONS.info;
+    d.append(svgNode(ICONS.info));
     d.append(el("span", "", n));
     notesBox.append(d);
   }
@@ -153,7 +165,7 @@ function renderMedia(): void {
     const li = el("li", `item${m.supported ? "" : " unsupported"}`);
     li.dataset.testid = "media-item";
     const ic = el("div", `ficon ${m.supported ? m.category : "blocked"}`);
-    ic.innerHTML = m.supported ? (ICONS[m.category] ?? ICONS.other) : ICONS.blocked;
+    ic.append(svgNode(m.supported ? (ICONS[m.category] ?? ICONS.other) : ICONS.blocked));
     const body = el("div", "body");
     const name = el("p", "name", m.filename);
     name.title = m.url;
