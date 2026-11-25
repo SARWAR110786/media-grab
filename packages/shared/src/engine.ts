@@ -74,6 +74,8 @@ export interface EngineConfig {
   /** Minimum milliseconds between progress callbacks. */
   updateInterval?: number;
   retryDelay?: (attempt: number) => number;
+  /** Called with each received chunk's size before it's stored; await it to limit bandwidth. */
+  throttle?: (bytes: number, signal: AbortSignal) => Promise<void>;
 }
 
 export interface EngineSnapshot {
@@ -166,7 +168,7 @@ function segLength(s: SegmentPlan): number {
 }
 
 export class SegmentedDownload {
-  private cfg: Required<Omit<EngineConfig, "plan" | "onUpdate" | "maxBytes" | "mimeType">> & EngineConfig;
+  private cfg: Required<Omit<EngineConfig, "plan" | "onUpdate" | "maxBytes" | "mimeType" | "throttle">> & EngineConfig;
   private status: EngineStatus = "idle";
   private mode: EngineMode = "single";
   private segments: SegmentState[] = [];
@@ -456,6 +458,7 @@ export class SegmentedDownload {
           finished = true;
         }
         if (chunk.byteLength) {
+          if (this.cfg.throttle) await this.cfg.throttle(chunk.byteLength, signal);
           await writer.write(chunk);
           received += chunk.byteLength;
           seg.downloaded += chunk.byteLength;

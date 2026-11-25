@@ -133,7 +133,7 @@ await test("landing page renders hero and both CTAs", async () => {
   await page.goto(WEB);
   await page.getByRole("heading", { name: /Download Smarter/ }).waitFor();
   assert(await page.getByRole("link", { name: "Start Downloading" }).isVisible(), "Start Downloading");
-  assert(await page.getByRole("link", { name: "Get Chrome Extension" }).isVisible(), "Get Chrome Extension");
+  assert(await page.getByRole("link", { name: "Get the Extension" }).isVisible(), "Get the Extension");
   await shot(page, "landing");
   await page.getByRole("link", { name: "Start Downloading" }).click();
   await page.waitForURL("**/dashboard");
@@ -325,6 +325,71 @@ await test("dashboard shows queue and history; settings persist", async () => {
   await page.getByRole("switch", { name: "Save automatically" }).click();
   await page.reload();
   assert((await page.getByRole("switch", { name: "Save automatically" }).getAttribute("data-state")) === "unchecked", "setting persisted");
+  await context.close();
+});
+
+await test("checksum: a correct SHA-256 is verified, a wrong one is flagged", async () => {
+  const { context, page } = await webPage({ autoSave: false });
+  await page.goto(`${WEB}/downloader`);
+  const good = sha256(fixture.files["document.pdf"].data);
+  await analyzeIn(page, `${F}/files/document.pdf`);
+  await page.getByRole("button", { name: /More options/ }).click();
+  await page.getByLabel("Expected checksum").fill(`${good}  document.pdf`);
+  await page.getByRole("button", { name: /^(Accelerated download|Download)$/ }).click();
+  await gotoManager(page);
+  const item = page.getByTestId("download-item").filter({ hasText: "document.pdf" }).first();
+  await waitFor(async () => (await item.getByTestId("checksum").getAttribute("data-state")) === "match", { message: "checksum match", timeout: 30000 });
+
+  // Re-verify the finished file against a wrong hash.
+  await item.getByRole("button", { name: /Re-verify/ }).click();
+  await item.getByLabel("Expected checksum").fill("0".repeat(64));
+  await item.getByRole("button", { name: /^Verify$/ }).click();
+  await waitFor(async () => (await item.getByTestId("checksum").getAttribute("data-state")) === "mismatch", { message: "checksum mismatch" });
+  assert((await item.innerText()).includes(good), "shows the actual hash");
+  await context.close();
+});
+
+await test("scheduled downloads wait, then can be started early", async () => {
+  const { context, page } = await webPage({ autoSave: false });
+  await page.goto(`${WEB}/downloader`);
+  await analyzeIn(page, `${F}/files/song.mp3`);
+  await page.getByRole("button", { name: /More options/ }).click();
+  const later = new Date(Date.now() + 3 * 3600_000);
+  const pad = (n) => String(n).padStart(2, "0");
+  const local = `${later.getFullYear()}-${pad(later.getMonth() + 1)}-${pad(later.getDate())}T${pad(later.getHours())}:${pad(later.getMinutes())}`;
+  await page.getByLabel("Start at").fill(local);
+  await page.getByRole("button", { name: "Schedule download" }).click();
+  await gotoManager(page);
+  const item = page.getByTestId("download-item").filter({ hasText: "song.mp3" }).first();
+  await item.getByText("Scheduled", { exact: true }).waitFor();
+  await new Promise((r) => setTimeout(r, 1500));
+  assert((await item.getAttribute("data-status")) === "queued", "still waiting");
+  await item.getByRole("button", { name: "Start now" }).click();
+  await waitFor(async () => (await item.getAttribute("data-status")) === "completed", { message: "completed after Start now", timeout: 30000 });
+  await context.close();
+});
+
+await test("speed limit slows downloads to the configured rate", async () => {
+  // 512 KB/s on a ~6 MB file should take well over 5 seconds.
+  const { context, page } = await webPage({ speedLimitKBps: 512, autoSave: false });
+  await page.goto(`${WEB}/downloader`);
+  await analyzeIn(page, `${F}/files/sample.mp4`);
+  const t0 = Date.now();
+  await page.getByRole("button", { name: /^(Accelerated download|Download)$/ }).click();
+  await gotoManager(page);
+  const item = page.getByTestId("download-item").filter({ hasText: "sample.mp4" }).first();
+  await new Promise((r) => setTimeout(r, 3000));
+  assert((await item.getAttribute("data-status")) === "downloading", "still downloading after 3 s");
+  // Lift the limit and let it finish.
+  await page.evaluate(() => {
+    const s = JSON.parse(localStorage.getItem("mediagrab.settings.v1") ?? "{}");
+    localStorage.setItem("mediagrab.settings.v1", JSON.stringify({ ...s, speedLimitKBps: 0 }));
+  });
+  await page.getByRole("link", { name: /Settings/ }).first().click();
+  await page.getByRole("button", { name: /Reset to defaults/ }).click();
+  await gotoManager(page);
+  await waitFor(async () => (await item.getAttribute("data-status")) === "completed", { message: "completed after lifting limit", timeout: 60000 });
+  assert(Date.now() - t0 > 3000, "was throttled");
   await context.close();
 });
 

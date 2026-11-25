@@ -5,6 +5,9 @@ import { toast } from "sonner";
 import {
   ArrowRight,
   Ban,
+  CalendarClock,
+  ChevronDown,
+  Hash,
   ClipboardPaste,
   Download,
   ExternalLink,
@@ -19,7 +22,7 @@ import {
   TriangleExclamationPoint,
   Zap,
 } from "lucide-react";
-import { formatBytes, planSegments, type AnalyzeError, type AnalyzeFile, type AnalyzeResponse, type AnalyzeWebpage } from "@mediagrab/shared";
+import { formatBytes, HASH_LABEL, parseChecksum, planSegments, type AnalyzeError, type AnalyzeFile, type AnalyzeResponse, type AnalyzeWebpage } from "@mediagrab/shared";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
@@ -153,14 +156,33 @@ function FileResult({ info }: { info: AnalyzeFile }) {
   const [filename, setFilename] = useState(info.filename);
   const [connections, setConnections] = useState(info.segmentable ? settings.connections : 1);
   const [added, setAdded] = useState<string | null>(null);
+  const [showOptions, setShowOptions] = useState(false);
+  const [checksum, setChecksum] = useState("");
+  const [startAt, setStartAt] = useState("");
+  const parsedSum = checksum.trim() ? parseChecksum(checksum) : null;
+  const startMs = startAt ? new Date(startAt).getTime() : NaN;
+  const scheduled = Number.isFinite(startMs) && startMs > Date.now();
   const canAccelerate = !info.exceedsLimit || info.corsDirect;
   // The exact plan the engine will use, so the UI never promises more connections than it opens.
   const segments = planSegments(info.size, info.acceptRanges, connections, settings.minSegmentMB * 1024 * 1024).length;
 
   const start = () => {
-    const id = downloadManager.add(info, { filename, connections });
+    if (parsedSum && !parsedSum.ok) {
+      toast.error(parsedSum.error);
+      setShowOptions(true);
+      return;
+    }
+    if (startAt && !scheduled) {
+      toast.error("The start time is in the past. Pick a later time or clear it.");
+      setShowOptions(true);
+      return;
+    }
+    const id = downloadManager.add(info, { filename, connections, checksum: checksum.trim() || undefined, startAt: scheduled ? startMs : undefined });
     setAdded(id);
-    toast.success("Download started", { description: filename, action: { label: "View", onClick: () => (window.location.href = "/downloads") } });
+    toast.success(scheduled ? "Download scheduled" : "Download started", {
+      description: scheduled ? `${filename} · starts ${new Date(startMs).toLocaleString()}` : filename,
+      action: { label: "View", onClick: () => (window.location.href = "/downloads") },
+    });
   };
 
   const browserHref = info.exceedsLimit ? info.finalUrl : browserDownloadHref(info.finalUrl, filename);
@@ -226,6 +248,61 @@ function FileResult({ info }: { info: AnalyzeFile }) {
           </div>
         )}
 
+        {canAccelerate && !added && (
+          <div className="rounded-lg border">
+            <button
+              type="button"
+              onClick={() => setShowOptions((v) => !v)}
+              aria-expanded={showOptions}
+              className="flex w-full cursor-pointer items-center justify-between gap-2 px-4 py-3 text-sm font-medium"
+            >
+              <span>
+                More options
+                {(checksum.trim() || scheduled) && (
+                  <span className="ml-2 font-normal text-muted-foreground">
+                    {[checksum.trim() && "checksum", scheduled && "scheduled"].filter(Boolean).join(" · ")}
+                  </span>
+                )}
+              </span>
+              <ChevronDown className={cn("size-4 transition-transform", showOptions && "rotate-180")} />
+            </button>
+            {showOptions && (
+              <div className="grid gap-4 border-t p-4 sm:grid-cols-2">
+                <div>
+                  <label htmlFor="mg-checksum" className="flex items-center gap-1.5 text-sm font-medium">
+                    <Hash className="size-4 text-primary" /> Expected checksum
+                  </label>
+                  <Input
+                    id="mg-checksum"
+                    value={checksum}
+                    onChange={(e) => setChecksum(e.target.value)}
+                    placeholder="SHA-256, SHA-1 or MD5"
+                    spellCheck={false}
+                    autoComplete="off"
+                    className="mt-1.5 font-mono text-xs"
+                  />
+                  <p className={cn("mt-1.5 text-xs", parsedSum && !parsedSum.ok ? "text-destructive" : "text-muted-foreground")}>
+                    {parsedSum ? (parsedSum.ok ? `${HASH_LABEL[parsedSum.algorithm]} — checked when the download finishes.` : parsedSum.error) : "Paste the hash the publisher lists to confirm the file arrived intact."}
+                  </p>
+                </div>
+                <div>
+                  <label htmlFor="mg-start-at" className="flex items-center gap-1.5 text-sm font-medium">
+                    <CalendarClock className="size-4 text-primary" /> Start at
+                  </label>
+                  <Input id="mg-start-at" type="datetime-local" value={startAt} onChange={(e) => setStartAt(e.target.value)} className="mt-1.5" />
+                  <p className="mt-1.5 text-xs text-muted-foreground">
+                    {startAt && !scheduled ? (
+                      <span className="text-destructive">That time has already passed.</span>
+                    ) : (
+                      "Leave empty to start now. Keep this tab open: scheduled downloads run in the browser."
+                    )}
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
         <div className="flex flex-col gap-2 sm:flex-row">
           {canAccelerate ? (
             added ? (
@@ -236,7 +313,7 @@ function FileResult({ info }: { info: AnalyzeFile }) {
               </Button>
             ) : (
               <Button size="lg" onClick={start} className="sm:flex-1">
-                <Zap /> {segments > 1 ? "Accelerated download" : "Download"}
+                {scheduled ? <CalendarClock /> : <Zap />} {scheduled ? "Schedule download" : segments > 1 ? "Accelerated download" : "Download"}
               </Button>
             )
           ) : null}

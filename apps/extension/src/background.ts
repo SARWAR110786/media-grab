@@ -160,7 +160,7 @@ async function startDownloads(items: Array<{ url: string; filename: string }>, p
         saveAs: settings.saveAs,
         conflictAction: "uniquify",
       });
-      if (typeof id !== "number") throw new Error(chrome.runtime.lastError?.message ?? "Chrome refused the download.");
+      if (typeof id !== "number") throw new Error(chrome.runtime.lastError?.message ?? "The browser refused the download.");
       await addHistory({ id, url: item.url, filename: name, pageTitle, startedAt: Date.now() });
       results.push({ url: item.url, ok: true, downloadId: id });
     } catch (e) {
@@ -174,7 +174,8 @@ async function startDownloads(items: Array<{ url: string; filename: string }>, p
 
 /** True for the extension's own pages (popup, options). Content scripts run inside web pages and have `sender.tab`. */
 function fromExtensionPage(sender: chrome.runtime.MessageSender): boolean {
-  return sender.id === chrome.runtime.id && !sender.tab && typeof sender.url === "string" && sender.url.startsWith(`chrome-extension://${chrome.runtime.id}/`);
+  // getURL("") is chrome-extension://<id>/ in Chrome and moz-extension://<uuid>/ in Firefox.
+  return sender.id === chrome.runtime.id && !sender.tab && typeof sender.url === "string" && sender.url.startsWith(chrome.runtime.getURL(""));
 }
 
 chrome.runtime.onMessage.addListener((msg: Message, sender, sendResponse) => {

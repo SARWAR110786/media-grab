@@ -5,7 +5,8 @@ out/
 *.tsbuildinfo
 .env
 .env.local
-apps/web/public/mediagrab-extension.zip
+apps/web/public/mediagrab-extension*.zip
 test-results/
 coverage/
 .e2e-downloads/
+dist-firefox/

@@ -5,10 +5,10 @@ import { Logo } from "@/components/logo";
 import { ThemeToggle } from "@/components/theme-toggle";
 
 const FEATURES = [
-  { icon: Radar, title: "Smart media detection", body: "The Chrome extension finds HTML5 video and audio sources, file links and media the page loads — with format, resolution and size when available." },
+  { icon: Radar, title: "Smart media detection", body: "The Chrome and Firefox extension finds HTML5 video and audio sources, file links and media the page loads — with format, resolution and size when available." },
   { icon: Gauge, title: "Fast downloads", body: "When a server supports byte ranges, files are split into parallel segments, then reassembled and size-verified. Otherwise a single reliable stream." },
   { icon: Layers, title: "Download management", body: "A lightweight manager with live progress, speed, ETA, pause and resume, retries and a searchable history." },
-  { icon: Puzzle, title: "Browser integration", body: "Download straight through Chrome's download manager, or send a link to the web app for accelerated downloading." },
+  { icon: Puzzle, title: "Browser integration", body: "Download straight through your browser's download manager, or send a link to the web app for accelerated downloading." },
   { icon: ShieldCheck, title: "Secure and simple", body: "Strict URL validation, SSRF protection, sanitized filenames and no cookies or credentials ever collected." },
 ];
 
@@ -35,7 +35,7 @@ export default function Landing() {
       <main>
         <section className="mx-auto max-w-4xl px-4 pb-20 pt-16 text-center sm:px-6 sm:pt-24">
           <span className="inline-flex items-center gap-2 rounded-full border bg-card/70 px-3 py-1 text-xs font-medium text-muted-foreground backdrop-blur animate-fade-in">
-            <span className="size-1.5 rounded-full bg-success" /> Web app + Chrome extension
+            <span className="size-1.5 rounded-full bg-success" /> Web app + Chrome &amp; Firefox extension
           </span>
           <h1 className="mt-6 text-balance text-4xl font-semibold tracking-tight animate-fade-in sm:text-6xl">
             Download Smarter.
@@ -53,7 +53,7 @@ export default function Landing() {
             </Button>
             <Button asChild size="lg" variant="outline">
               <Link href="/extension">
-                <Puzzle /> Get Chrome Extension
+                <Puzzle /> Get the Extension
               </Link>
             </Button>
           </div>

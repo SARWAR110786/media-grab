@@ -35,6 +35,9 @@ jobs:
         env:
           NEXT_TELEMETRY_DISABLED: "1"
 
+      - name: Lint the Firefox extension
+        run: npx --yes web-ext@8 lint --source-dir apps/extension/dist-firefox --self-hosted
+
       - name: Install Playwright + Chromium
         run: |
           npm install --no-save playwright
@@ -53,8 +56,8 @@ jobs:
           path: e2e-screenshots
           if-no-files-found: ignore
 
-      - name: Upload extension package
+      - name: Upload extension packages
         uses: actions/upload-artifact@v4
         with:
           name: mediagrab-extension
-          path: apps/web/public/mediagrab-extension.zip
+          path: apps/web/public/mediagrab-extension*.zip

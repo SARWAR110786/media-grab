@@ -189,7 +189,7 @@ function renderMedia(): void {
         "p",
         "muted small",
         restricted
-          ? "Chrome doesn't allow extensions to read browser pages like this one. Open a regular website."
+          ? "Browsers don't allow extensions to read built-in pages like this one. Open a regular website."
           : "MediaGrab looks for HTML5 video/audio and links to media or files. Start playing the video and press refresh if the player loads it later.",
       ),
     );
@@ -266,7 +266,7 @@ async function renderDownloads(): Promise<boolean> {
     bar.append(fill);
     const actions = el("div", "dl-actions");
 
-    let state = "Removed from Chrome";
+    let state = "Removed from the browser's download list";
     let stateCls = "state warn";
     const received = d?.bytesReceived ?? 0;
     const total = d?.totalBytes && d.totalBytes > 0 ? d.totalBytes : null;

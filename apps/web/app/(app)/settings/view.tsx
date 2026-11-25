@@ -30,10 +30,15 @@ function SliderRow({ value, min, max, onChange, format, label }: { value: number
   return (
     <div className="flex items-center gap-3">
       <Slider min={min} max={max} step={1} value={[value]} onValueChange={([v]) => onChange(v)} aria-label={label} />
-      <span className="w-20 shrink-0 text-right text-sm tabular-nums text-muted-foreground">{format(value)}</span>
+      <span className="w-24 shrink-0 text-right text-sm tabular-nums text-muted-foreground">{format(value)}</span>
     </div>
   );
 }
+
+/** Speed-limit steps in KB/s; 0 = unlimited. */
+const SPEED_STEPS = [0, 128, 256, 512, 1024, 2048, 5120, 10240, 25600, 51200, 102400];
+const speedLabel = (kb: number) => (kb === 0 ? "Unlimited" : kb >= 1024 ? `${+(kb / 1024).toFixed(1)} MB/s` : `${kb} KB/s`);
+const nearestStep = (kb: number) => SPEED_STEPS.reduce((best, v, i) => (Math.abs(v - kb) < Math.abs(SPEED_STEPS[best] - kb) ? i : best), 0);
 
 export function SettingsView() {
   const s = useSettings();
@@ -95,6 +100,16 @@ export function SettingsView() {
         </Row>
         <Row title="Simultaneous downloads" description="Other downloads wait in the queue.">
           <SliderRow label="Simultaneous downloads" value={s.maxConcurrent} min={1} max={6} onChange={(v) => updateSettings({ maxConcurrent: v })} format={(v) => `${v}`} />
+        </Row>
+        <Row title="Speed limit" description="Caps MediaGrab's total download speed across all downloads and connections, so other apps keep bandwidth. Applies immediately.">
+          <SliderRow
+            label="Speed limit"
+            value={nearestStep(s.speedLimitKBps)}
+            min={0}
+            max={SPEED_STEPS.length - 1}
+            onChange={(i) => updateSettings({ speedLimitKBps: SPEED_STEPS[i] })}
+            format={(i) => speedLabel(SPEED_STEPS[i])}
+          />
         </Row>
         <Row title="Retries per segment" description="How many times a failed connection is retried before the download fails.">
           <SliderRow label="Retries per segment" value={s.retries} min={0} max={10} onChange={(v) => updateSettings({ retries: v })} format={(v) => `${v}`} />
