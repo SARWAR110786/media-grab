@@ -1,13 +1,8 @@
-import type { Metadata } from "next";
-import { Suspense } from "react";
-import { DownloaderView } from "./view";
+import { redirect } from "next/navigation";
 
-export const metadata: Metadata = { title: "Downloader" };
-
-export default function DownloaderPage() {
-  return (
-    <Suspense>
-      <DownloaderView />
-    </Suspense>
-  );
+/** Old address (used by earlier extension versions): the downloader is now the home page. */
+export default async function DownloaderPage({ searchParams }: { searchParams: Promise<{ url?: string | string[] }> }) {
+  const { url } = await searchParams;
+  const u = Array.isArray(url) ? url[0] : url;
+  redirect(u ? `/?url=${encodeURIComponent(u)}` : "/");
 }

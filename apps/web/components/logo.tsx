@@ -5,8 +5,8 @@ export function LogoMark({ className }: { className?: string }) {
     <svg viewBox="0 0 32 32" className={cn("size-8", className)} aria-hidden>
       <defs>
         <linearGradient id="mg-g" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0" stopColor="oklch(0.62 0.21 290)" />
-          <stop offset="1" stopColor="oklch(0.5 0.23 270)" />
+          <stop offset="0" stopColor="oklch(0.66 0.16 150)" />
+          <stop offset="1" stopColor="oklch(0.52 0.14 160)" />
         </linearGradient>
       </defs>
       <rect width="32" height="32" rx="9" fill="url(#mg-g)" />

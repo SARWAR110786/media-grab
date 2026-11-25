@@ -4,7 +4,7 @@ Detect, download and organize **publicly accessible** media files. MediaGrab has
 
 | Part | Where | What it does |
 | --- | --- | --- |
-| **Web app** | `apps/web` (Next.js 15, TypeScript, Tailwind v4, shadcn/ui-style components, Lucide) | Landing page, dashboard, URL analyzer, download manager with pause/resume/retry, history, settings |
+| **Web app** | `apps/web` (Next.js 15, TypeScript, Tailwind v4, shadcn/ui-style components, Lucide) | Home page is the downloader (paste a link → Download), My downloads with pause/resume/retry, Extension, Settings, Privacy. Light theme with a green accent |
 | **Backend** | `apps/web/app/api/*` (Next.js route handlers, Node runtime) | URL validation, SSRF-safe metadata lookup, streaming download proxy with Range support |
 | **Browser extension** | `apps/extension` (Manifest V3, TypeScript, esbuild; Chrome/Edge and Firefox builds) | Detects HTML5 video/audio, `<source>` tags, file links and loaded media on the current page; downloads via `chrome.downloads` |
 | **Shared library** | `packages/shared` | Media classification, filename sanitizing, URL/IP validation, and the segmented download engine |
@@ -43,6 +43,10 @@ npm start
 ```
 
 Open http://localhost:3000. For development with hot reload use `npm run dev` (run `npm run build:extension` once first so the extension package exists for download).
+
+## Chrome Web Store
+
+Step-by-step publishing guide, listing text, permission justifications and privacy answers: [`docs/chrome-web-store.md`](docs/chrome-web-store.md). Once published, set `NEXT_PUBLIC_CHROME_WEB_STORE_URL` (and `NEXT_PUBLIC_FIREFOX_ADDONS_URL`) in Vercel and the site shows **Add to Chrome / Firefox** buttons.
 
 ## Loading the browser extension
 
@@ -152,7 +156,7 @@ After deploying, set the extension's **web app URL** in its settings to your dom
 media-grab/
 ├── apps/
 │   ├── web/                 Next.js app
-│   │   ├── app/             pages: / (landing), (app)/dashboard, downloader, downloads, extension, settings
+│   │   ├── app/             pages: / (downloader), downloads, extension, settings, privacy (/dashboard and /downloader redirect to /)
 │   │   │   └── api/         analyze, download (proxy), health
 │   │   ├── components/      UI (components/ui = shadcn-style primitives)
 │   │   ├── lib/server/      safe-fetch (SSRF), analyze, html-scan, rate-limit, config

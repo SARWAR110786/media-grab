@@ -186,7 +186,11 @@ export function detectMedia(doc: Document, opts: DetectOptions, perf?: Performan
   }
 
   const host = doc.location?.hostname ?? "";
-  if (host && matchProtectedHost(host)) notes.add(PROTECTED_SITE_REASON);
+  if (host && matchProtectedHost(host)) {
+    // Streaming services (YouTube, Netflix, …) forbid downloading: list what was seen, but never offer a download.
+    notes.add(PROTECTED_SITE_REASON);
+    return { items: [...found.values()].map((m) => ({ ...m, supported: false, reason: PROTECTED_SITE_REASON })), notes: [...notes] };
+  }
 
   return { items: [...found.values()], notes: [...notes] };
 }

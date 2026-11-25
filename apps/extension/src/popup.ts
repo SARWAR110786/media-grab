@@ -210,7 +210,7 @@ function renderMedia(): void {
 
 function openInWebApp(url: string) {
   const base = (settings.webAppUrl || "http://localhost:3000").replace(/\/+$/, "");
-  void chrome.tabs.create({ url: `${base}/downloader?url=${encodeURIComponent(url)}` });
+  void chrome.tabs.create({ url: `${base}/?url=${encodeURIComponent(url)}` });
 }
 
 async function download(items: DetectedMedia[]): Promise<void> {

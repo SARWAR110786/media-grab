@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { PageHeader } from "@/components/page-header";
 import { useExtensionVersion } from "@/lib/client/use-extension";
+import { CHROME_WEB_STORE_URL, FIREFOX_ADDONS_URL } from "@/lib/links";
 
 const PERMISSIONS = [
   { name: "downloads", why: "Start downloads with the browser's download manager and show their progress, pause, resume and cancel." },
@@ -83,10 +84,35 @@ export function ExtensionView() {
         ) : null}
       </PageHeader>
 
+      {(CHROME_WEB_STORE_URL || FIREFOX_ADDONS_URL) && (
+        <Card className="mb-4 flex flex-col gap-4 p-6 sm:flex-row sm:items-center">
+          <div className="flex-1">
+            <h2 className="text-lg font-semibold">Install in one click</h2>
+            <p className="mt-1 text-sm text-muted-foreground">Get MediaGrab from your browser&apos;s add-on store. It updates automatically.</p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {CHROME_WEB_STORE_URL && (
+              <Button asChild size="lg">
+                <a href={CHROME_WEB_STORE_URL} target="_blank" rel="noopener noreferrer">
+                  <Download /> Add to Chrome
+                </a>
+              </Button>
+            )}
+            {FIREFOX_ADDONS_URL && (
+              <Button asChild size="lg" variant="outline">
+                <a href={FIREFOX_ADDONS_URL} target="_blank" rel="noopener noreferrer">
+                  <Download /> Add to Firefox
+                </a>
+              </Button>
+            )}
+          </div>
+        </Card>
+      )}
+
       <div className="grid gap-4 lg:grid-cols-[1.3fr_1fr]">
         <Card className="p-6">
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <h2 className="text-lg font-semibold">Install (developer mode)</h2>
+            <h2 className="text-lg font-semibold">{CHROME_WEB_STORE_URL || FIREFOX_ADDONS_URL ? "Or install manually" : "Install"}</h2>
             <div className="inline-flex rounded-lg bg-muted p-1" role="tablist" aria-label="Browser">
               {(["chrome", "firefox"] as const).map((id) => (
                 <button

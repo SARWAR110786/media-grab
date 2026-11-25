@@ -85,7 +85,7 @@ export function DownloadList({ initialFilter = "all" }: { initialFilter?: Filter
         <div className="flex flex-col items-center justify-center rounded-xl border border-dashed py-16 text-center">
           <Inbox className="size-10 text-muted-foreground/60" />
           <p className="mt-3 font-medium">{downloads.length === 0 ? "No downloads yet" : "Nothing here"}</p>
-          <p className="mt-1 text-sm text-muted-foreground">{downloads.length === 0 ? "Paste a direct file link on the Downloader page to get started." : "No downloads match this filter."}</p>
+          <p className="mt-1 text-sm text-muted-foreground">{downloads.length === 0 ? "Paste a file link on the home page to get started." : "No downloads match this filter."}</p>
         </div>
       ) : (
         <div className="flex flex-col gap-3">

@@ -25,6 +25,13 @@ for (const d of [dist, distFirefox]) {
 function copyStatic() {
   for (const f of fs.readdirSync(path.join(root, "static"))) fs.copyFileSync(path.join(root, "static", f), path.join(dist, f));
   writeIcons(path.join(dist, "icons"));
+  // Link the store listing and the extension's details page to the deployed site.
+  if (!webAppUrl.startsWith("http://localhost")) {
+    const file = path.join(dist, "manifest.json");
+    const manifest = JSON.parse(fs.readFileSync(file, "utf8"));
+    manifest.homepage_url = webAppUrl;
+    fs.writeFileSync(file, JSON.stringify(manifest, null, 2));
+  }
 }
 
 /**
@@ -98,5 +105,7 @@ if (watch) {
   copyFirefox();
   zipDir(dist, path.join(publicDir, "mediagrab-extension.zip"), "mediagrab-extension");
   zipDir(distFirefox, path.join(publicDir, "mediagrab-extension-firefox.zip"), "");
+  // Chrome Web Store upload: manifest.json must be at the zip's root. Not served by the site.
+  zipDir(dist, path.join(root, "mediagrab-chrome-webstore.zip"), "");
   console.log(`Default web app URL: ${webAppUrl}`);
 }

@@ -39,7 +39,7 @@ export function aggregate(tab: TabMedia | null): { items: DetectedMedia[]; notes
 async function updateBadge(tabId: number, tab: TabMedia | null): Promise<void> {
   const count = aggregate(tab).items.filter((i) => i.supported).length;
   try {
-    await chrome.action.setBadgeBackgroundColor({ tabId, color: "#6d4aff" });
+    await chrome.action.setBadgeBackgroundColor({ tabId, color: "#16a05a" });
     await chrome.action.setBadgeText({ tabId, text: count ? String(count > 99 ? "99+" : count) : "" });
   } catch {
     /* tab closed */

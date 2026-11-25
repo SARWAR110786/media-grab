@@ -1,8 +1,6 @@
-import type { Metadata } from "next";
-import { DashboardView } from "./view";
+import { redirect } from "next/navigation";
 
-export const metadata: Metadata = { title: "Dashboard" };
-
+/** The dashboard was merged into the home page. */
 export default function DashboardPage() {
-  return <DashboardView />;
+  redirect("/");
 }

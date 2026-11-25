@@ -1,8 +1,7 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
-import { useTheme } from "next-themes";
 import { toast } from "sonner";
-import { HardDrive, Monitor, Moon, RotateCcw, Sun, Trash } from "lucide-react";
+import { HardDrive, RotateCcw, Trash } from "lucide-react";
 import { formatBytes } from "@mediagrab/shared";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -12,7 +11,6 @@ import { PageHeader } from "@/components/page-header";
 import { DEFAULT_SETTINGS, updateSettings, useSettings } from "@/lib/client/settings";
 import { clearAllStoredData, opfsSupported, storedBytes } from "@/lib/client/opfs-store";
 import { downloadManager, useDownloads } from "@/lib/client/download-manager";
-import { cn } from "@/lib/utils";
 
 function Row({ title, description, children }: { title: string; description: string; children: React.ReactNode }) {
   return (
@@ -42,7 +40,6 @@ const nearestStep = (kb: number) => SPEED_STEPS.reduce((best, v, i) => (Math.abs
 
 export function SettingsView() {
   const s = useSettings();
-  const { theme, setTheme } = useTheme();
   const downloads = useDownloads();
   const [mounted, setMounted] = useState(false);
   const [usage, setUsage] = useState<number | null>(null);
@@ -65,32 +62,7 @@ export function SettingsView() {
     <div>
       <PageHeader title="Settings" description="Preferences are saved in this browser." />
 
-      <Card className="px-5 sm:px-6">
-        <h2 className="pt-5 font-semibold">Appearance</h2>
-        <Row title="Theme" description="Light, dark, or follow your system.">
-          <div className="inline-flex rounded-lg bg-muted p-1">
-            {[
-              { id: "light", icon: Sun, label: "Light" },
-              { id: "dark", icon: Moon, label: "Dark" },
-              { id: "system", icon: Monitor, label: "System" },
-            ].map(({ id, icon: Icon, label }) => (
-              <button
-                key={id}
-                onClick={() => setTheme(id)}
-                aria-pressed={mounted && theme === id}
-                className={cn(
-                  "flex cursor-pointer items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
-                  mounted && theme === id ? "bg-card shadow-sm" : "text-muted-foreground hover:text-foreground",
-                )}
-              >
-                <Icon className="size-4" /> {label}
-              </button>
-            ))}
-          </div>
-        </Row>
-      </Card>
-
-      <Card className="mt-4 divide-y px-5 sm:px-6">
+      <Card className="divide-y px-5 sm:px-6">
         <h2 className="pb-1 pt-5 font-semibold">Downloads</h2>
         <Row title="Connections per file" description="Parallel segments for servers that support byte ranges. 1 turns splitting off.">
           <SliderRow label="Connections per file" value={s.connections} min={1} max={16} onChange={(v) => updateSettings({ connections: v })} format={(v) => `${v}`} />
