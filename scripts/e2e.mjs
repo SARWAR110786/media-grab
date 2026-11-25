@@ -198,7 +198,7 @@ await test("server without Range support falls back to a single stream", async (
   const { context, page } = await webPage();
   await page.goto(`${WEB}/`);
   await analyzeIn(page, `${F}/norange/big.bin`);
-  await page.getByText("No range support").waitFor();
+  await page.getByText("Can't resume").waitFor();
   const [download] = await Promise.all([page.waitForEvent("download"), page.getByRole("button", { name: /^Download$/ }).click()]);
   const file = await download.path();
   assert(sha256(fs.readFileSync(file)) === sha256(fixture.files["big.bin"].data), "sha256");
