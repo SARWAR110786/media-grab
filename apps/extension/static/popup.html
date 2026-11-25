@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width" />
+    <title>MediaGrab</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <header class="top">
+      <div class="site">
+        <img id="favicon" class="favicon" alt="" width="20" height="20" hidden />
+        <div class="site-text">
+          <p id="site-name" class="site-name">Loading…</p>
+          <p id="site-count" class="muted small">Scanning page</p>
+        </div>
+      </div>
+      <div class="actions">
+        <button id="refresh" class="icon-btn" title="Refresh detection" aria-label="Refresh detection">
+          <svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-2.64-6.36M21 4v5h-5" /></svg>
+        </button>
+        <button id="settings" class="icon-btn" title="Settings" aria-label="Settings">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" /></svg>
+        </button>
+      </div>
+    </header>
+
+    <nav class="tabs" role="tablist">
+      <button role="tab" id="tab-media" class="tab active" aria-selected="true">Detected <span id="media-badge" class="pill">0</span></button>
+      <button role="tab" id="tab-downloads" class="tab" aria-selected="false">Downloads <span id="dl-badge" class="pill">0</span></button>
+    </nav>
+
+    <main>
+      <section id="panel-media">
+        <div id="notes"></div>
+        <ul id="media-list" class="list"></ul>
+        <div id="media-empty" class="empty" hidden></div>
+      </section>
+      <section id="panel-downloads" hidden>
+        <ul id="dl-list" class="list"></ul>
+        <div id="dl-empty" class="empty" hidden>
+          <p class="empty-title">No downloads yet</p>
+          <p class="muted small">Files you download from the Detected tab appear here with live progress.</p>
+        </div>
+      </section>
+    </main>
+
+    <footer class="bottom">
+      <button id="download-all" class="btn primary" disabled>Download all</button>
+      <button id="clear-finished" class="btn ghost" hidden>Clear finished</button>
+    </footer>
+    <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+    <script src="popup.js"></script>
+  </body>
+</html>

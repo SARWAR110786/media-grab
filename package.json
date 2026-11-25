@@ -1,0 +1,28 @@
+{
+  "name": "media-grab",
+  "version": "1.0.0",
+  "private": true,
+  "description": "MediaGrab — Smart Media Downloader (web app + Chrome extension)",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "dev": "npm run dev -w @mediagrab/web",
+    "build": "npm run build -w @mediagrab/extension && npm run build -w @mediagrab/web",
+    "build:extension": "npm run build -w @mediagrab/extension",
+    "start": "npm run start -w @mediagrab/web",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "test": "vitest run",
+    "test:e2e": "node scripts/e2e.mjs",
+    "fixtures": "node scripts/fixture-server.mjs"
+  },
+  "devDependencies": {
+    "typescript": "5.9.3",
+    "vitest": "^3.2.4",
+    "@types/node": "^22.10.0"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

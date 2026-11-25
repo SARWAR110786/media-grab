@@ -1,0 +1,11 @@
+node_modules/
+.next/
+dist/
+out/
+*.tsbuildinfo
+.env
+.env.local
+apps/web/public/mediagrab-extension.zip
+test-results/
+coverage/
+.e2e-downloads/

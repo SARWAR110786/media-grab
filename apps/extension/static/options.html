@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>MediaGrab Settings</title>
+    <link rel="stylesheet" href="popup.css" />
+    <link rel="stylesheet" href="options.css" />
+  </head>
+  <body class="options">
+    <div class="wrap">
+      <header class="opt-head">
+        <img src="icons/icon48.png" width="36" height="36" alt="" />
+        <div>
+          <h1>MediaGrab settings</h1>
+          <p class="muted">Changes are saved automatically.</p>
+        </div>
+      </header>
+
+      <section class="card">
+        <h2>Detection</h2>
+        <label class="opt"><span><strong>Detect media automatically</strong><small>Scan pages as they load and show the number of files on the toolbar icon. When off, pages are scanned only when you open the popup.</small></span><input type="checkbox" id="autoDetect" /></label>
+        <label class="opt"><span><strong>Include documents and archives</strong><small>Also list links to PDF, ZIP, RAR, 7Z, EPUB and installers — not just video and audio.</small></span><input type="checkbox" id="includeFiles" /></label>
+        <label class="opt"><span><strong>Show unsupported media</strong><small>List DRM-protected players, blob streams and HLS/DASH manifests with an explanation of why they can't be downloaded.</small></span><input type="checkbox" id="showUnsupported" /></label>
+        <label class="opt"><span><strong>Look up file sizes</strong><small>Sends a HEAD request for detected files to read their size. Requires the optional “access all sites” permission, which you can revoke any time. Cookies are never sent.</small></span><input type="checkbox" id="lookUpSizes" /></label>
+      </section>
+
+      <section class="card">
+        <h2>Downloads</h2>
+        <label class="opt"><span><strong>Ask where to save each file</strong><small>Show Chrome's “Save as” dialog for every download.</small></span><input type="checkbox" id="saveAs" /></label>
+        <label class="opt col"><span><strong>Subfolder</strong><small>Optional folder inside Chrome's download location, e.g. <code>MediaGrab</code>. Leave empty to save directly there.</small></span><input type="text" id="subfolder" placeholder="MediaGrab" maxlength="120" /></label>
+        <div class="opt"><span><strong>Download location</strong><small>Chrome decides the base folder. Change it in Chrome's settings.</small></span><button class="btn" id="openChromeDownloads">Open Chrome download settings</button></div>
+      </section>
+
+      <section class="card">
+        <h2>Web app</h2>
+        <label class="opt col"><span><strong>MediaGrab web app URL</strong><small>Used by the ⚡ button to open a file in the web app for multi-connection downloading.</small></span><input type="url" id="webAppUrl" placeholder="http://localhost:3000" /></label>
+      </section>
+      <p id="status" class="muted small" role="status"></p>
+    </div>
+    <script src="options.js"></script>
+  </body>
+</html>
